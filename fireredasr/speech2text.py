@@ -55,7 +55,7 @@ def main(args):
             batch_uttid,
             batch_wav_path,
             {
-            "use_gpu": args.use_gpu,
+            "use_gpu": 0,
             "beam_size": args.beam_size,
             "nbest": args.nbest,
             "decode_max_len": args.decode_max_len,

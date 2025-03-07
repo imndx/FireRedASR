@@ -9,3 +9,4 @@ requests==2.32.0
 torch>=2.0.0
 torchaudio>=0.10.0
 transformers>=4.46.3
+# ffmpeg is required but installed via system package manager (apt, brew, etc.)
