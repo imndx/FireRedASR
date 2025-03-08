@@ -19,9 +19,19 @@ OLLAMA_API_URL = os.environ.get("OLLAMA_API_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen2.5:3b")
 
 
+# Check if CUDA is available and log appropriate message
+has_cuda = torch.cuda.is_available()
+if has_cuda:
+    logging.info("CUDA is available. GPU acceleration will be used.")
+    device = "cuda"
+else:
+    logging.warning("CUDA is not available. Running in CPU-only mode, which will be slow.")
+    logging.warning("For better performance, please ensure NVIDIA drivers and CUDA are properly installed.")
+    device = "cpu"
+
 try:
     model = FireRedAsr.from_pretrained(ASR_TYPE, MODEL_DIR)
-    logging.info(f"FireRedASR model loaded: {ASR_TYPE}")
+    logging.info(f"FireRedASR model loaded: {ASR_TYPE} on {device}")
 except Exception as e:
     logging.error(f"Failed to load FireRedASR model: {e}")
     raise
@@ -46,18 +56,24 @@ def correct_with_ollama(text, audio_info=None):
         }
 
         start_time = time.time()
-        response = requests.post(
-            f"{OLLAMA_API_URL}/api/generate",
-            headers={"Content-Type": "application/json"},
-            data=json.dumps(payload),
-            timeout=300
-        )
-
-        response.raise_for_status()
-        result = response.json()
+        
+        # Add more resilience to the Ollama API call
+        try:
+            response = requests.post(
+                f"{OLLAMA_API_URL}/api/generate",
+                headers={"Content-Type": "application/json"},
+                data=json.dumps(payload),
+                timeout=300
+            )
+            response.raise_for_status()
+            result = response.json()
+            corrected_text = result.get("response", text).strip()
+        except requests.exceptions.RequestException as e:
+            logging.error(f"Ollama API request failed: {str(e)}")
+            logging.info("Continuing with original ASR text")
+            return text, 0  # Return original text if request fails
+            
         correction_time = time.time() - start_time
-
-        corrected_text = result.get("response", text).strip()
         logging.info(f"Ollama correction completed in {correction_time:.2f}s")
 
         return corrected_text, correction_time
