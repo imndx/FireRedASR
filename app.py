@@ -4,7 +4,7 @@ import requests
 import subprocess
 import logging
 from flask import Flask, request, jsonify
-from asr_service import process_audio_file
+from asr_service import correct_with_ollama, process_audio_file
 from urllib.parse import urlparse
 
 app = Flask(__name__)
@@ -105,6 +105,30 @@ def recognize_audio():
     except Exception as e:
         logging.exception("Error processing request")
         return jsonify({'error': f'Error processing audio file: {str(e)}'}), 500
+
+@app.route('/correct', methods=['POST'])
+def correct_text():
+    # Get audio file URL from request
+    request_data = request.get_json()
+    if not request_data or 'text' not in request_data:
+        return jsonify({'error': 'Missing audio file URL in request'}), 400
+
+    text = request_data['text']
+
+    # Download the audio file
+    try:
+        # Process the audio file
+        result = correct_with_ollama(text)
+
+        # Return the result
+        return jsonify(result)
+
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': f'Failed to download audio file: {str(e)}'}), 400
+    except Exception as e:
+        logging.exception("Error processing request")
+        return jsonify({'error': f'Error processing audio file: {str(e)}'}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
